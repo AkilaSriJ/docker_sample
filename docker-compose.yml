@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  tt_mysql:
+    image: mariadb:11.5
+    container_name: tt_mysql
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: TrainTatkalDB
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: always
+
+  tt_backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tt_backend
+    depends_on:
+      - tt_mysql
+    environment:
+      MYSQL_CONNECTION: "Server=tt_mysql;Port=3306;Database=TrainTatkalDB;User=root;Password=;TreatTinyAsBoolean=True"
+      ASPNETCORE_ENVIRONMENT: "Development"
+    ports:
+      - "5193:8080"
+    restart: on-failure
+
+volumes:
+  mysql_data:
