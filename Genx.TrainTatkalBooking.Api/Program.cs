@@ -40,6 +40,9 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5193";
+app.Urls.Add($"http://*:{port}");
+
 app.UseCors("AllowReactApp");
 
 // Configure the HTTP request pipeline.
