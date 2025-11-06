@@ -4,35 +4,47 @@ using Genx.TrainTatkalBooking.Service.Mapper;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-var connFromEnv = Environment.GetEnvironmentVariable("MYSQL_CONNECTION");
+
+// ✅ Get connection string (priority: Environment Variable > appsettings.json)
+var connFromEnv = Environment.GetEnvironmentVariable("MYSQLCONN");
 var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
 var mysqlConn = string.IsNullOrWhiteSpace(connFromEnv) ? defaultConn : connFromEnv;
 
-// Configure DbContext for MariaDB 11.5.2
+// ✅ Log for debugging (optional — remove after confirming)
+Console.WriteLine($"Using MySQL connection: {mysqlConn}");
+
+// ✅ Configure DbContext for Aiven MySQL (MariaDB 11.5.x compatible)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
         mysqlConn,
-        new MySqlServerVersion(new Version(11, 5, 2)),   // ✅ Match your MariaDB version
+        new MySqlServerVersion(new Version(11, 5, 2)),
         mySqlOptions =>
         {
-            mySqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null); // ✅ adds retry resilience
+            mySqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null
+            );
         }
     )
 );
+
+// ✅ Register dependencies
 builder.Services.AddDataDI();
 builder.Services.AddServiceDI();
 builder.Services.AddAutoMapper(typeof(MappingProfile));
-// Add services to the container.
 
+// ✅ Add controllers and Swagger
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// ✅ Enable CORS (for React frontend)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://frontend:80") 
+        policy.WithOrigins("http://localhost:3000", "http://frontend:80")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -40,21 +52,18 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5193";
+
+// ✅ Configure port (Render assigns dynamically)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 app.Urls.Add($"http://*:{port}");
 
 app.UseCors("AllowReactApp");
 
-// Configure the HTTP request pipeline.
-
+// ✅ Enable Swagger UI
 app.UseSwagger();
 app.UseSwaggerUI();
 
-
-//app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
